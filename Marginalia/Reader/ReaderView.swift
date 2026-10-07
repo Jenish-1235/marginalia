@@ -42,8 +42,6 @@ private struct ReaderScreen: View {
     let close: () -> Void
 
     @State private var showingOutline = false
-    @State private var scrubPage: Double = 0
-    @State private var isScrubbing = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -75,9 +73,6 @@ private struct ReaderScreen: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 if model.chromeVisible { topBar.transition(.move(edge: .top).combined(with: .opacity)) }
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if model.chromeVisible { bottomBar.transition(.move(edge: .bottom).combined(with: .opacity)) }
-            }
             .overlay(alignment: .trailing) {
                 if model.chromeVisible {
                     ToolPalette(model: model)
@@ -96,10 +91,15 @@ private struct ReaderScreen: View {
             }
             .accessibilityLabel("Close")
 
-            Text(model.document.title)
-                .font(.headline)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 1) {
+                Text(model.document.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(model.pageLabel)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+            .frame(maxWidth: .infinity)
 
             Menu {
                 Picker("Layout", selection: $model.layout) {
@@ -132,35 +132,5 @@ private struct ReaderScreen: View {
         .foregroundStyle(Theme.ink)
         .background(Theme.surface)
         .overlay(alignment: .bottom) { Theme.hairline.frame(height: 1) }
-    }
-
-    private var bottomBar: some View {
-        HStack(spacing: 16) {
-            if model.pageCount > 1 {
-                Slider(
-                    value: Binding(
-                        get: { isScrubbing ? scrubPage : Double(model.pageIndex) },
-                        set: { scrubPage = $0 }
-                    ),
-                    in: 0...Double(model.pageCount - 1),
-                    step: 1
-                ) { editing in
-                    isScrubbing = editing
-                    if !editing { model.go(toPage: Int(scrubPage)) }
-                }
-                .tint(Theme.ink)
-                .onChange(of: scrubPage) { _, page in
-                    if isScrubbing { model.go(toPage: Int(page)) }
-                }
-            }
-            Text(model.pageLabel)
-                .font(.footnote.monospacedDigit())
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(Theme.surface)
-        .overlay(alignment: .top) { Theme.hairline.frame(height: 1) }
     }
 }
