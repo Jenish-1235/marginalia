@@ -43,3 +43,8 @@ UI tests write screenshots when run with `TEST_RUNNER_SHOTS_DIR=<dir>`; the anno
 | Notebook button | All marks in reading order + your notes; export Markdown |
 | + → Save Web Page… | Browser; log in if needed, then **Save PDF** (clean article or original layout). arXiv links save the real paper. |
 | `marginalia://save?url=<link>` | Same, from Shortcuts (e.g. a Safari share-sheet shortcut) |
+
+## Icon
+
+The app icon is drawn in code: `swift design/make-icon.swift <out-dir>` renders the light, dark and
+tinted variants plus the small in-app logo. Copy them into `Marginalia/Resources/Assets.xcassets`.

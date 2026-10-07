@@ -10,6 +10,19 @@ struct RootView: View {
 
         NavigationSplitView {
             List(selection: Binding<Shelf?>(get: { shelf }, set: { if let new = $0 { shelf = new } })) {
+                HStack(spacing: 10) {
+                    Image("Logo")
+                        .clipShape(RoundedRectangle(cornerRadius: 6.5, style: .continuous))
+                    Text("Marginalia")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                }
+                .padding(.bottom, 8)
+                .listRowBackground(Color.clear)
+                .selectionDisabled()
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+
                 ForEach(Shelf.allCases) { item in
                     let selected = item == shelf
                     HStack {
@@ -30,6 +43,8 @@ struct RootView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.surface)
             .navigationTitle("Marginalia")
+            .toolbar(removing: .title)
+
         } detail: {
             NavigationStack {
                 LibraryView(shelf: shelf) { openDocument = $0 }
