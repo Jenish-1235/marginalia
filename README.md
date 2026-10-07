@@ -48,3 +48,11 @@ UI tests write screenshots when run with `TEST_RUNNER_SHOTS_DIR=<dir>`; the anno
 
 The app icon is drawn in code: `swift design/make-icon.swift <out-dir>` renders the light, dark and
 tinted variants plus the small in-app logo. Copy them into `Marginalia/Resources/Assets.xcassets`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Third-party components keep their own licenses:
+- [Mozilla Readability](https://github.com/mozilla/readability) (bundled in `Marginalia/Capture/Resources/`) — Apache-2.0, see `Readability-LICENSE.md`.
+- [GRDB.swift](https://github.com/groue/GRDB.swift) (Swift Package dependency) — MIT.
