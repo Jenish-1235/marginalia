@@ -69,6 +69,14 @@ final class AnnotationFlowTests: XCTestCase {
         start.press(forDuration: 0.05, thenDragTo: end)
         shot("05-smart-highlight")
 
+        // Coloured pen: picking a swatch switches to the pen.
+        for (ink, y) in [("Red ink", 0.50), ("Blue ink", 0.53), ("Black ink", 0.56)] {
+            app.buttons[ink].tap()
+            canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: y))
+                .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: y + 0.01)))
+        }
+        shot("05b-pen-colours")
+
         // Notebook
         notebookButton.tap()
         shot("06-notebook")

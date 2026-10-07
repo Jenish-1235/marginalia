@@ -36,12 +36,23 @@ enum PencilTool: String, CaseIterable, Identifiable {
     }
 }
 
-enum InkShade: String, CaseIterable, Identifiable {
-    case ink, graphite
+/// Pen ink. Tones are chosen to read well on white paper.
+enum InkColor: String, CaseIterable, Identifiable {
+    case black, white, red, green, blue, yellow
 
     var id: String { rawValue }
-    var title: String { self == .ink ? "Ink" : "Graphite" }
-    var color: UIColor { self == .ink ? UIColor(white: 0.08, alpha: 1) : UIColor(white: 0.45, alpha: 1) }
+    var title: String { rawValue.capitalized }
+
+    var color: UIColor {
+        switch self {
+        case .black: UIColor(white: 0.08, alpha: 1)
+        case .white: UIColor(white: 0.98, alpha: 1)
+        case .red: UIColor(red: 0.83, green: 0.18, blue: 0.18, alpha: 1)
+        case .green: UIColor(red: 0.18, green: 0.56, blue: 0.24, alpha: 1)
+        case .blue: UIColor(red: 0.10, green: 0.40, blue: 0.80, alpha: 1)
+        case .yellow: UIColor(red: 0.98, green: 0.78, blue: 0.10, alpha: 1)
+        }
+    }
 }
 
 enum PenWidth: Double, CaseIterable, Identifiable {
@@ -53,14 +64,14 @@ enum PenWidth: Double, CaseIterable, Identifiable {
 
 struct ToolSettings: Equatable {
     var tool: PencilTool = .pen
-    var shade: InkShade = .ink
+    var color: InkColor = .black
     var width: PenWidth = .medium
     /// Off: only Apple Pencil draws and fingers always scroll/select.
     var fingerDraws = false
 
     var pkTool: PKTool {
         switch tool {
-        case .pen: PKInkingTool(.pen, color: shade.color, width: width.rawValue)
+        case .pen: PKInkingTool(.pen, color: color.color, width: width.rawValue)
         case .highlighter: PKInkingTool(.marker, color: UIColor(white: 0.55, alpha: 1), width: 14)
         case .underline: PKInkingTool(.pen, color: UIColor(white: 0.2, alpha: 1), width: 1.6)
         case .eraser: PKEraserTool(.vector)
@@ -75,7 +86,7 @@ struct ToolSettings: Equatable {
         let defaults = UserDefaults.standard
         var settings = ToolSettings()
         if let raw = defaults.string(forKey: "tools.tool"), let tool = PencilTool(rawValue: raw) { settings.tool = tool }
-        if let raw = defaults.string(forKey: "tools.shade"), let shade = InkShade(rawValue: raw) { settings.shade = shade }
+        if let raw = defaults.string(forKey: "tools.color"), let color = InkColor(rawValue: raw) { settings.color = color }
         if let width = PenWidth(rawValue: defaults.double(forKey: "tools.width")) { settings.width = width }
         settings.fingerDraws = defaults.bool(forKey: "tools.fingerDraws")
         return settings
@@ -84,7 +95,7 @@ struct ToolSettings: Equatable {
     func save() {
         let defaults = UserDefaults.standard
         defaults.set(tool.rawValue, forKey: "tools.tool")
-        defaults.set(shade.rawValue, forKey: "tools.shade")
+        defaults.set(color.rawValue, forKey: "tools.color")
         defaults.set(width.rawValue, forKey: "tools.width")
         defaults.set(fingerDraws, forKey: "tools.fingerDraws")
     }

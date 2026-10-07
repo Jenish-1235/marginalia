@@ -48,6 +48,9 @@ final class InkLayer: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate
         let canvas = PKCanvasView()
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
+        // Pages are white paper. Without this, PencilKit adapts ink for the app's dark appearance
+        // (black ink would render white).
+        canvas.overrideUserInterfaceStyle = .light
         canvas.isScrollEnabled = false
         canvas.contentInsetAdjustmentBehavior = .never
         canvas.tool = model.tools.pkTool

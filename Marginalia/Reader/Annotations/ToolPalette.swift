@@ -12,17 +12,17 @@ struct ToolPalette: View {
 
             divider
 
-            ForEach(InkShade.allCases) { shade in
-                Button { model.tools.shade = shade } label: {
-                    Circle()
-                        .fill(shade == .ink ? Theme.ink : Theme.inkTertiary)
-                        .frame(width: 14, height: 14)
-                        .padding(3)
-                        .overlay(Circle().strokeBorder(Theme.ink, lineWidth: model.tools.shade == shade ? 1.5 : 0))
-                        .frame(width: 40, height: 32)
+            // Two swatches per row keeps the rail narrow.
+            VStack(spacing: 2) {
+                ForEach(Array(stride(from: 0, to: InkColor.allCases.count, by: 2)), id: \.self) { start in
+                    HStack(spacing: 0) {
+                        ForEach(InkColor.allCases[start..<min(start + 2, InkColor.allCases.count)]) { ink in
+                            swatch(ink)
+                        }
+                    }
                 }
-                .accessibilityLabel(shade.title)
             }
+            .padding(.vertical, 2)
 
             ForEach(PenWidth.allCases) { width in
                 Button { model.tools.width = width } label: {
@@ -61,6 +61,25 @@ struct ToolPalette: View {
                 .frame(width: 40, height: 40)
         }
         .accessibilityLabel(tool.title)
+    }
+
+    /// Picking a colour also switches to the pen, since only the pen uses it.
+    private func swatch(_ ink: InkColor) -> some View {
+        let selected = model.tools.color == ink
+        return Button {
+            model.tools.color = ink
+            model.tools.tool = .pen
+        } label: {
+            Circle()
+                .fill(Color(ink.color))
+                .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+                .frame(width: 14, height: 14)
+                .padding(2.5)
+                .overlay(Circle().strokeBorder(Theme.ink, lineWidth: selected ? 1.5 : 0))
+                .frame(width: 20, height: 22)
+        }
+        .accessibilityLabel("\(ink.title) ink")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var divider: some View {
