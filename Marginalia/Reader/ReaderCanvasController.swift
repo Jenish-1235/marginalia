@@ -10,6 +10,14 @@ final class ReaderCanvasController: UIViewController {
     private(set) lazy var inkLayer = InkLayer(model: model)
     private lazy var markMenu = UIEditMenuInteraction(delegate: self)
     private var didRestorePosition = false
+    private var selectionPress: UILongPressGestureRecognizer?
+    private var chromeTap: UITapGestureRecognizer?
+    /// When the touch behind the current tap began; long holds (a resting palm) aren't taps.
+    private var tapTouchBegan: TimeInterval = 0
+    private static let maxTapDuration: TimeInterval = 0.35
+    /// Set while a Pencil (or finger-drawing) stroke is in progress, and the time it last ended.
+    private var isDrawing = false
+    private var lastDrawingEnded = Date.distantPast
 
     /// Live PDFKit annotations for each stored mark, and the reverse lookup for hit-testing.
     private var annotationsByMark: [String: [PDFAnnotation]] = [:]
@@ -210,12 +218,14 @@ final class ReaderCanvasController: UIViewController {
         press.allowedTouchTypes = [UITouch.TouchType.direct.rawValue as NSNumber]
         press.delegate = self
         pdfView.addGestureRecognizer(press)
+        selectionPress = press
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         tap.delegate = self
         tap.cancelsTouchesInView = false
         tap.allowedTouchTypes = [UITouch.TouchType.direct.rawValue as NSNumber]
         pdfView.addGestureRecognizer(tap)
+        chromeTap = tap
 
         let undo = UITapGestureRecognizer(target: self, action: #selector(undoTap))
         undo.numberOfTouchesRequired = 2
@@ -226,6 +236,38 @@ final class ReaderCanvasController: UIViewController {
         redo.numberOfTouchesRequired = 3
         redo.delegate = self
         pdfView.addGestureRecognizer(redo)
+    }
+
+    // MARK: Palm rejection
+
+    /// Contact radius above which a touch is treated as a resting palm, not a fingertip.
+    private static let palmRadius: CGFloat = 40
+    /// Finger gestures are ignored for this long after a stroke ends (palm lifting off, etc).
+    private static let drawingCooldown: TimeInterval = 0.8
+
+    func drawingDidBegin() {
+        isDrawing = true
+        // A palm that landed before the Pencil may already have started a selection or menu.
+        if let press = selectionPress, press.state != .possible {
+            press.isEnabled = false
+            press.isEnabled = true
+        }
+        selectionAnchor = nil
+        pdfView.clearSelection()
+        markMenu.dismissMenu()
+    }
+
+    func drawingDidEnd() {
+        isDrawing = false
+        lastDrawingEnded = Date()
+    }
+
+    private func isLikelyPalm(_ touch: UITouch) -> Bool {
+        touch.type == .direct && touch.majorRadius > Self.palmRadius
+    }
+
+    private var isWritingNow: Bool {
+        isDrawing || Date().timeIntervalSince(lastDrawingEnded) < Self.drawingCooldown
     }
 
     @objc private func undoTap() { if model.undoManager.canUndo { model.undoManager.undo() } }
@@ -240,6 +282,7 @@ final class ReaderCanvasController: UIViewController {
     private var selectionAnchor: (page: PDFPage, point: CGPoint)?
 
     @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard model.tools.fingerSelects else { return }
         let location = gesture.location(in: pdfView)
         guard let page = pdfView.page(for: location, nearest: true) else { return }
         let point = pdfView.convert(location, to: page)
@@ -266,6 +309,7 @@ final class ReaderCanvasController: UIViewController {
     }
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard ProcessInfo.processInfo.systemUptime - tapTouchBegan < Self.maxTapDuration else { return }
         let location = gesture.location(in: pdfView)
         if let page = pdfView.page(for: location, nearest: false),
            let annotation = page.annotation(at: pdfView.convert(location, to: page)) {
@@ -327,6 +371,15 @@ extension ReaderCanvasController: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         true
+    }
+
+    /// Our finger gestures never see palms, and stay quiet while you're writing.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        if isLikelyPalm(touch) { return false }
+        if touch.type == .direct && isWritingNow { return false }
+        if gestureRecognizer === selectionPress && !model.tools.fingerSelects { return false }
+        if gestureRecognizer === chromeTap { tapTouchBegan = touch.timestamp }
+        return true
     }
 }
 

@@ -68,6 +68,8 @@ struct ToolSettings: Equatable {
     var width: PenWidth = .medium
     /// Off: only Apple Pencil draws and fingers always scroll/select.
     var fingerDraws = false
+    /// Off by default: a resting palm can't select text. Pencil highlighting is unaffected.
+    var fingerSelects = false
 
     var pkTool: PKTool {
         switch tool {
@@ -89,6 +91,7 @@ struct ToolSettings: Equatable {
         if let raw = defaults.string(forKey: "tools.color"), let color = InkColor(rawValue: raw) { settings.color = color }
         if let width = PenWidth(rawValue: defaults.double(forKey: "tools.width")) { settings.width = width }
         settings.fingerDraws = defaults.bool(forKey: "tools.fingerDraws")
+        settings.fingerSelects = defaults.bool(forKey: "tools.fingerSelects")
         return settings
     }
 
@@ -98,5 +101,6 @@ struct ToolSettings: Equatable {
         defaults.set(color.rawValue, forKey: "tools.color")
         defaults.set(width.rawValue, forKey: "tools.width")
         defaults.set(fingerDraws, forKey: "tools.fingerDraws")
+        defaults.set(fingerSelects, forKey: "tools.fingerSelects")
     }
 }

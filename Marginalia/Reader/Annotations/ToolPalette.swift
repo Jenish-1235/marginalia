@@ -36,6 +36,17 @@ struct ToolPalette: View {
 
             divider
 
+            Button { model.tools.fingerSelects.toggle() } label: {
+                Image(systemName: "character.cursor.ibeam")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(model.tools.fingerSelects ? Theme.background : Theme.inkSecondary)
+                    .frame(width: 32, height: 32)
+                    .background(model.tools.fingerSelects ? Theme.ink : .clear, in: Circle())
+                    .frame(width: 40, height: 36)
+            }
+            .accessibilityLabel("Finger Text Selection")
+            .accessibilityValue(model.tools.fingerSelects ? "On" : "Off")
+
             Button { model.tools.fingerDraws.toggle() } label: {
                 Image(systemName: model.tools.fingerDraws ? "hand.draw.fill" : "hand.draw")
                     .font(.system(size: 16, weight: .medium))

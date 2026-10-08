@@ -48,8 +48,18 @@ final class AnnotationFlowTests: XCTestCase {
         XCTAssertTrue(notebookButton.waitForExistence(timeout: 10))
         shot("02-reader")
 
-        // Select a word by long-pressing on the first page's text, then highlight it.
+        // Finger selection is off by default, so a resting touch selects nothing and shows no menu.
         let canvas = app.windows.firstMatch
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.30, dy: 0.30)).press(forDuration: 1.0)
+        let anyMenu = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier IN {'Highlight', 'Select All', 'Insert Space'}")).firstMatch
+        XCTAssertFalse(anyMenu.waitForExistence(timeout: 1.5), "Long-press should not select text when finger selection is off")
+        XCTAssertTrue(notebookButton.exists, "Long-press should not hide the reader controls")
+        shot("02b-no-selection-by-default")
+
+        // Turn finger selection on for the next step.
+        app.buttons["Finger Text Selection"].tap()
+        // Select a word by long-pressing on the first page's text, then highlight it.
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.30, dy: 0.30)).press(forDuration: 1.0)
         shot("03-selection-menu")
         let highlight = app.descendants(matching: .any).matching(identifier: "Highlight").firstMatch

@@ -45,7 +45,7 @@ final class InkLayer: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate
         let index = model.pdf.index(for: page)
         if let existing = canvases[index] { return existing }
 
-        let canvas = PKCanvasView()
+        let canvas = PencilCanvasView()
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
         // Pages are white paper. Without this, PencilKit adapts ink for the app's dark appearance
@@ -57,17 +57,17 @@ final class InkLayer: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate
         canvas.drawingPolicy = model.tools.drawingPolicy
         canvas.delegate = self
         canvas.tag = index
-        // PencilKit's own finger gestures (e.g. the "Insert Space" long-press menu) would steal
-        // the finger long-press we use for text selection. Fingers only ever draw when the user
-        // opts in, via the drawing gesture recognizer.
-        for recognizer in canvas.gestureRecognizers ?? [] where recognizer !== canvas.drawingGestureRecognizer {
-            recognizer.allowedTouchTypes = [UITouch.TouchType.pencil.rawValue as NSNumber]
-        }
+        canvas.restrictGesturesToPencil()
         isApplyingDrawing = true
         canvas.drawing = model.inkDrawing(for: index)
         isApplyingDrawing = false
         canvases[index] = canvas
         return canvas
+    }
+
+    func pdfView(_ pdfView: PDFView, willDisplayOverlayView overlayView: UIView, for page: PDFPage) {
+        // PencilKit installs some gestures lazily; catch them once the canvas is on screen.
+        (overlayView as? PencilCanvasView)?.restrictGesturesToPencil()
     }
 
     func pdfView(_ pdfView: PDFView, willEndDisplayingOverlayView overlayView: UIView, for page: PDFPage) {
@@ -102,9 +102,11 @@ final class InkLayer: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate
 
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
         strokeCountAtToolStart[canvasView.tag] = canvasView.drawing.strokes.count
+        model.canvas?.drawingDidBegin()
     }
 
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+        model.canvas?.drawingDidEnd()
         guard model.tools.tool.snapsToText != nil else { return }
         awaitingSnap.insert(canvasView.tag)
     }
@@ -166,5 +168,22 @@ final class InkLayer: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate
         isApplyingDrawing = false
         model.saveInk(drawing, page: index)
         model.addMark(from: selection, style: style)
+    }
+}
+
+/// Ink canvas that keeps PencilKit's extras out of the way of reading:
+/// - its gestures (other than drawing) only respond to Apple Pencil, so a resting palm can't
+///   trigger them;
+/// - its edit menu ("Select All", "Insert Space") only appears for the lasso tool, where its
+///   Copy / Delete / Duplicate actions are actually useful.
+final class PencilCanvasView: PKCanvasView {
+    func restrictGesturesToPencil() {
+        for recognizer in gestureRecognizers ?? [] where recognizer !== drawingGestureRecognizer {
+            recognizer.allowedTouchTypes = [UITouch.TouchType.pencil.rawValue as NSNumber]
+        }
+    }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        tool is PKLassoTool ? super.canPerformAction(action, withSender: sender) : false
     }
 }
