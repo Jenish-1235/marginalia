@@ -32,6 +32,11 @@ final class ReaderModel {
     var editingHighlight: Highlight?
 
     var showingNotebook = false
+
+    /// Annotated-copy export state (drives the Save button and its confirmation).
+    private(set) var isSavingCopy = false
+    var savedCopy: SavedCopy?
+    @ObservationIgnored private var exportFileName: String?
     /// Free-form notes for the whole document.
     var notebookBody = "" {
         didSet { scheduleNotebookSave() }
@@ -75,6 +80,7 @@ final class ReaderModel {
         } catch {
             print("Failed to load annotations: \(error)")
         }
+        exportFileName = document.exportFileName
         isLoading = false
         markOpened()
     }
@@ -199,6 +205,55 @@ final class ReaderModel {
         } catch {
             return nil
         }
+    }
+
+    // MARK: Annotated copy
+
+    struct SavedCopy: Identifiable {
+        let url: URL
+        let replaced: Bool
+        var id: URL { url }
+    }
+
+    /// Writes the annotated PDF to Files › On My iPad › Marginalia › Annotated.
+    /// Each document always saves to the same file, so saving again overwrites it.
+    func saveAnnotatedCopy() async {
+        guard !isSavingCopy else { return }
+        isSavingCopy = true
+        defer { isSavingCopy = false }
+
+        canvas?.inkLayer.flush()
+        let folder = FileStore.exportsDirectory
+        let name = exportFileName ?? AnnotatedExporter.uniqueFileName(for: document.title, in: folder)
+        let destination = folder.appending(path: name)
+        let replaced = FileManager.default.fileExists(atPath: destination.path)
+        let input = AnnotatedExporter.Input(
+            sourceURL: FileStore.fileURL(for: document),
+            destinationURL: destination,
+            title: document.title,
+            marks: Array(highlights.values),
+            inkByPage: inkByPage)
+
+        do {
+            try await Self.runExport(input)
+            if exportFileName != name {
+                exportFileName = name
+                let id = document.id
+                try? await database.writer.write { db in
+                    try db.execute(sql: "UPDATE document SET exportFileName = ? WHERE id = ?", arguments: [name, id])
+                }
+            }
+            savedCopy = SavedCopy(url: destination, replaced: replaced)
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    var exportError: String?
+
+    @concurrent
+    private static func runExport(_ input: AnnotatedExporter.Input) async throws {
+        try AnnotatedExporter.export(input)
     }
 
     // MARK: Ink

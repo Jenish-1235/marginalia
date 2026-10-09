@@ -23,6 +23,7 @@ final class AppEnvironment {
                 at: FileStore.libraryDirectory, includingPropertiesForKeys: nil)) ?? [] {
                 try? FileManager.default.removeItem(at: url)
             }
+            try? FileManager.default.removeItem(at: URL.documentsDirectory.appending(path: "Annotated"))
             UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
         }
         #endif

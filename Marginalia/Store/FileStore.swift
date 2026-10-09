@@ -16,6 +16,10 @@ nonisolated enum FileStore {
     static let thumbnailsDirectory: URL = directory(
         URL.cachesDirectory.appending(path: "Thumbnails", directoryHint: .isDirectory))
 
+    /// Annotated exports. Visible in Files › On My iPad › Marginalia › Annotated.
+    static let exportsDirectory: URL = directory(
+        URL.documentsDirectory.appending(path: "Annotated", directoryHint: .isDirectory))
+
     static var databaseURL: URL { root.appending(path: "marginalia.sqlite") }
 
     static func fileURL(for document: Document) -> URL {

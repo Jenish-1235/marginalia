@@ -47,7 +47,9 @@ targets:
         UIApplicationSupportsMultipleScenes: true
         UIRequiresFullScreen: false
         UIUserInterfaceStyle: Dark
-        LSSupportsOpeningDocumentsInPlace: false
+        # Exposes Documents/ (annotated exports) in Files › On My iPad › Marginalia.
+        LSSupportsOpeningDocumentsInPlace: true
+        UIFileSharingEnabled: true
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

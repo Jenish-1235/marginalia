@@ -87,6 +87,22 @@ final class AnnotationFlowTests: XCTestCase {
         }
         shot("05b-pen-colours")
 
+        // Add a note to the first highlight: tap the mark, Add Note, type, Done.
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.30, dy: 0.30)).tap()
+        let addNote = app.descendants(matching: .any).matching(identifier: "Add Note").firstMatch
+        if addNote.waitForExistence(timeout: 3) {
+            addNote.tap()
+            app.textViews.firstMatch.typeText("Key idea: attention replaces recurrence entirely.")
+            app.buttons["Done"].tap()
+        }
+
+        // Save the annotated copy, then save again: the second save replaces the first.
+        app.buttons["Save Annotated PDF"].tap()
+        XCTAssertTrue(app.staticTexts["Saved annotated PDF"].waitForExistence(timeout: 10))
+        shot("05c-saved")
+        app.buttons["Save Annotated PDF"].tap()
+        XCTAssertTrue(app.staticTexts["Saved — replaced previous version"].waitForExistence(timeout: 10))
+
         // Notebook
         notebookButton.tap()
         shot("06-notebook")

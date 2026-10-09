@@ -95,6 +95,14 @@ nonisolated final class AppDatabase: Sendable {
             }
         }
 
+        migrator.registerMigration("v4-export") { db in
+            // File name of the document's annotated export in Files › On My iPad › Marginalia,
+            // so re-saving overwrites the same file.
+            try db.alter(table: "document") { t in
+                t.add(column: "exportFileName", .text)
+            }
+        }
+
         return migrator
     }
 }

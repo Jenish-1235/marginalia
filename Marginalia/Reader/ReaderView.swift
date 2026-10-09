@@ -42,6 +42,7 @@ private struct ReaderScreen: View {
     let close: () -> Void
 
     @State private var showingOutline = false
+    @State private var sharing: URL?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -64,6 +65,34 @@ private struct ReaderScreen: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { model.persistPosition() }
+        }
+        .overlay(alignment: .bottom) {
+            if let saved = model.savedCopy {
+                SavedCopyBanner(saved: saved) {
+                    sharing = saved.url
+                    model.savedCopy = nil
+                } dismiss: {
+                    model.savedCopy = nil
+                }
+                .padding(.bottom, 28)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: saved.url) {
+                    try? await Task.sleep(for: .seconds(5))
+                    withAnimation { model.savedCopy = nil }
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: model.savedCopy?.id)
+        .sheet(item: $sharing) { url in
+            ShareSheet(items: [url])
+        }
+        .alert("Couldn’t save", isPresented: Binding(
+            get: { model.exportError != nil },
+            set: { if !$0 { model.exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.exportError ?? "")
         }
     }
 
@@ -113,6 +142,21 @@ private struct ReaderScreen: View {
             }
             .accessibilityLabel("Layout")
 
+            Button {
+                Task { await model.saveAnnotatedCopy() }
+            } label: {
+                Group {
+                    if model.isSavingCopy {
+                        ProgressView().tint(Theme.ink)
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
+                .frame(width: 36, height: 36)
+            }
+            .disabled(model.isSavingCopy)
+            .accessibilityLabel("Save Annotated PDF")
+
             Button { showingOutline = true } label: {
                 Image(systemName: "list.bullet.indent")
                     .frame(width: 36, height: 36)
@@ -132,5 +176,47 @@ private struct ReaderScreen: View {
         .foregroundStyle(Theme.ink)
         .background(Theme.surface)
         .overlay(alignment: .bottom) { Theme.hairline.frame(height: 1) }
+    }
+}
+
+/// Confirmation after saving the annotated copy, with a shortcut to share it.
+private struct SavedCopyBanner: View {
+    let saved: ReaderModel.SavedCopy
+    let share: () -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(saved.replaced ? "Saved — replaced previous version" : "Saved annotated PDF")
+                    .font(.subheadline.weight(.semibold))
+                Text("Files › On My iPad › Marginalia › Annotated › \(saved.url.lastPathComponent)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Button("Share", action: share)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.background)
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background(Theme.ink, in: Capsule())
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 28, height: 28)
+            }
+            .accessibilityLabel("Dismiss")
+        }
+        .foregroundStyle(Theme.ink)
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .padding(.vertical, 10)
+        .frame(maxWidth: 620)
+        .background(Theme.elevated, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline))
     }
 }

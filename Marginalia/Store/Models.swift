@@ -54,6 +54,8 @@ nonisolated struct Document: Identifiable, Hashable, Codable, Sendable {
     var progress: Double
     var status: ReadingStatus
     var isIndexed: Bool
+    /// Name of the annotated export in the app's Files folder, once saved.
+    var exportFileName: String? = nil
 
     /// Most recent interaction, used for "recent" ordering.
     var lastTouched: Date { openedAt ?? addedAt }
